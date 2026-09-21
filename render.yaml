@@ -1,0 +1,42 @@
+services:
+  # ── Backend (Flask API) ──────────────────────────────────
+  - type: web
+    name: civicconnect-backend
+    runtime: python
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app
+    envVars:
+      - key: SECRET_KEY
+        generateValue: true          # Render auto-generates a secure key
+      - key: DB_HOST
+        sync: false                  # Set manually in Render dashboard
+      - key: DB_USER
+        sync: false
+      - key: DB_PASSWORD
+        sync: false
+      - key: DB_NAME
+        sync: false
+      - key: DB_PORT
+        value: "3306"
+      - key: DB_SSL_DISABLED
+        value: "false"
+      - key: FLASK_ENV
+        value: production
+      - key: PYTHON_VERSION
+        value: "3.11.0"
+
+  # ── Frontend (React / Vite) ──────────────────────────────
+  - type: web
+    name: civicconnect-frontend
+    runtime: static
+    rootDir: frontend
+    buildCommand: npm install && npm run build
+    staticPublishPath: dist
+    envVars:
+      - key: VITE_API_URL
+        value: https://civicconnect-backend.onrender.com
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
