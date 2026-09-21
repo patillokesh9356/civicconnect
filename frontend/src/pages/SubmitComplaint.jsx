@@ -276,11 +276,6 @@ export default function SubmitComplaint() {
             </button>
           </div>
           <div ref={mapRef} className="leaflet-container-custom" />
-          <p className="map-hint">
-            🖱️ Click — location pin करा &nbsp;|&nbsp;
-            ✌️ 2 fingers — map move करा &nbsp;|&nbsp;
-            🤏 Pinch — zoom in/out
-          </p>
         </div>
       </div>
     </div>
