@@ -7,6 +7,13 @@ load_dotenv()
 
 def get_db_connection():
     try:
+        # Use DATABASE_URL if available (Render / Supabase full connection string)
+        database_url = os.getenv("DATABASE_URL")
+        if database_url:
+            conn = psycopg2.connect(database_url, sslmode="require")
+            return conn
+
+        # Fallback: individual params
         conn = psycopg2.connect(
             host     = os.getenv("DB_HOST",     "localhost"),
             port     = int(os.getenv("DB_PORT", 5432)),
@@ -16,11 +23,11 @@ def get_db_connection():
             sslmode  = os.getenv("DB_SSLMODE",  "require"),
         )
         return conn
+
     except Exception as e:
         print("Database connection error:", e)
         return None
 
 
 def get_cursor(conn):
-    """Returns a dict-like cursor (like MySQL's dictionary=True)"""
     return conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
