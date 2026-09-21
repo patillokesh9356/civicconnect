@@ -1,24 +1,26 @@
 import os
-import mysql.connector
-from mysql.connector import Error
+import psycopg2
+import psycopg2.extras
 from dotenv import load_dotenv
 
-# Load .env file (local development)
 load_dotenv()
 
 def get_db_connection():
     try:
-        connection = mysql.connector.connect(
+        conn = psycopg2.connect(
             host     = os.getenv("DB_HOST",     "localhost"),
-            user     = os.getenv("DB_USER",     "root"),
+            port     = int(os.getenv("DB_PORT", 5432)),
+            database = os.getenv("DB_NAME",     "postgres"),
+            user     = os.getenv("DB_USER",     "postgres"),
             password = os.getenv("DB_PASSWORD", ""),
-            database = os.getenv("DB_NAME",     "civic_complaints_db"),
-            port     = int(os.getenv("DB_PORT", 3306)),
-            # Supabase / PlanetScale SSL support
-            ssl_disabled = os.getenv("DB_SSL_DISABLED", "false").lower() == "true",
+            sslmode  = os.getenv("DB_SSLMODE",  "require"),
         )
-        return connection
-
-    except Error as e:
+        return conn
+    except Exception as e:
         print("Database connection error:", e)
         return None
+
+
+def get_cursor(conn):
+    """Returns a dict-like cursor (like MySQL's dictionary=True)"""
+    return conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)

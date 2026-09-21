@@ -15,11 +15,10 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-from database import get_db_connection
+from database import get_db_connection, get_cursor
 
 app = Flask(__name__)
 
-# Allow requests from frontend (Vite dev + Vercel/Netlify production)
 CORS(app, resources={r"/*": {"origins": "*"}})
 
 app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", "civicconnect-super-secret-key-2024")
@@ -29,11 +28,11 @@ app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", "civicconnect-super-secret-ke
 # ================================================================
 
 def db():
-    """Get DB connection; abort with 500 if unavailable."""
+    """Get DB connection + RealDictCursor (PostgreSQL)"""
     conn = get_db_connection()
     if conn is None:
         return None, None
-    return conn, conn.cursor(dictionary=True)
+    return conn, get_cursor(conn)
 
 
 def to_str_dates(rows):
