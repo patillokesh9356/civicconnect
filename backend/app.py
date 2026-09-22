@@ -314,6 +314,7 @@ def submit_complaint():
     location    = (data.get("location")    or "").strip()
     latitude    = data.get("latitude")
     longitude   = data.get("longitude")
+    image_url   = (data.get("image_url")   or "").strip() or None
 
     if not title or not description:
         return jsonify({"message": "Title and description are required"}), 400
@@ -351,15 +352,15 @@ def submit_complaint():
             """INSERT INTO complaints
                (user_id, title, description, category, location, latitude, longitude,
                 priority, department_id, ai_category, ai_priority, ai_summary,
-                ai_suggestion, is_duplicate, duplicate_of)
-               VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                ai_suggestion, is_duplicate, duplicate_of, image_url)
+               VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
                RETURNING id""",
             (
                 g.user_id, title, description, final_category,
                 location or None, latitude, longitude,
                 ai["priority"], dept_id,
                 ai["category"], ai["priority"], ai["summary"], ai["suggestion"],
-                is_duplicate, dup_of
+                is_duplicate, dup_of, image_url
             )
         )
         conn.commit()

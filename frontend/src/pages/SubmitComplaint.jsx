@@ -2,11 +2,12 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
+import { uploadComplaintImage } from '../lib/supabase';
 
 const CATEGORIES = ['Road', 'Water', 'Electricity', 'Sanitation', 'Other'];
 
 export default function SubmitComplaint() {
-  const { API } = useAuth();
+  const { API, user } = useAuth();
   const navigate = useNavigate();
   const mapRef   = useRef(null);
   const leafletRef = useRef(null);
@@ -16,12 +17,20 @@ export default function SubmitComplaint() {
     title: '', description: '', category: '', location: '',
     latitude: null, longitude: null,
   });
-  const [ai, setAi]             = useState(null);
-  const [aiLoading, setAiLoad]  = useState(false);
-  const [error, setError]       = useState('');
-  const [success, setSuccess]   = useState('');
-  const [loading, setLoading]   = useState(false);
-  const [mapReady, setMapReady] = useState(false);
+  const [ai, setAi]               = useState(null);
+  const [aiLoading, setAiLoad]    = useState(false);
+  const [error, setError]         = useState('');
+  const [success, setSuccess]     = useState('');
+  const [loading, setLoading]     = useState(false);
+  const [mapReady, setMapReady]   = useState(false);
+
+  // Image states
+  const [imageFile, setImageFile]       = useState(null);
+  const [imagePreview, setImagePreview] = useState(null);
+  const [imageError, setImageError]     = useState('');
+  const [imageUploading, setImgUpload]  = useState(false);
+  const fileInputRef  = useRef(null);
+  const cameraInputRef = useRef(null);
 
   // Init Leaflet map
   useEffect(() => {
@@ -143,6 +152,34 @@ export default function SubmitComplaint() {
     }
   };
 
+  // Image selection handler
+  const handleImageSelect = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+    if (!allowed.includes(file.type)) {
+      setImageError('Only JPG, PNG, WebP, GIF allowed');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setImageError('Image must be under 5MB');
+      return;
+    }
+
+    setImageError('');
+    setImageFile(file);
+    setImagePreview(URL.createObjectURL(file));
+  };
+
+  const removeImage = () => {
+    setImageFile(null);
+    setImagePreview(null);
+    setImageError('');
+    if (fileInputRef.current)   fileInputRef.current.value = '';
+    if (cameraInputRef.current) cameraInputRef.current.value = '';
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!form.title.trim() || !form.description.trim()) {
@@ -151,7 +188,22 @@ export default function SubmitComplaint() {
     }
     setLoading(true);
     try {
-      const res = await axios.post(`${API}/complaints`, form);
+      // Upload image first if selected
+      let imageUrl = null;
+      if (imageFile) {
+        setImgUpload(true);
+        try {
+          imageUrl = await uploadComplaintImage(imageFile, user?.id || 'guest');
+        } catch (imgErr) {
+          setError(`Image upload failed: ${imgErr.message}`);
+          setLoading(false);
+          setImgUpload(false);
+          return;
+        }
+        setImgUpload(false);
+      }
+
+      const res = await axios.post(`${API}/complaints`, { ...form, image_url: imageUrl });
       setSuccess(`✅ Complaint #${res.data.complaint_id} submitted successfully!`);
       setTimeout(() => navigate('/my-complaints'), 2000);
     } catch (err) {
@@ -259,8 +311,75 @@ export default function SubmitComplaint() {
               </div>
             )}
 
-            <button type="submit" className="btn btn-primary btn-full" disabled={loading}>
-              {loading
+            {/* Photo Upload Section */}
+            <div className="photo-upload-section">
+              <label className="photo-upload-label">
+                📷 Photo Proof <span className="optional">(optional)</span>
+              </label>
+
+              {!imagePreview ? (
+                <div className="photo-upload-btns">
+                  {/* Camera — mobile वर direct camera उघडतो */}
+                  <button
+                    type="button"
+                    className="btn btn-ghost photo-btn"
+                    onClick={() => cameraInputRef.current?.click()}
+                  >
+                    📸 Camera
+                  </button>
+                  {/* Gallery */}
+                  <button
+                    type="button"
+                    className="btn btn-ghost photo-btn"
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    🖼️ Gallery
+                  </button>
+
+                  {/* Hidden inputs */}
+                  <input
+                    ref={cameraInputRef}
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    onChange={handleImageSelect}
+                    style={{ display: 'none' }}
+                  />
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageSelect}
+                    style={{ display: 'none' }}
+                  />
+                </div>
+              ) : (
+                <div className="photo-preview-box">
+                  <img src={imagePreview} alt="Complaint proof" className="photo-preview-img" />
+                  <div className="photo-preview-info">
+                    <span className="photo-name">{imageFile?.name}</span>
+                    <span className="photo-size">
+                      {(imageFile?.size / 1024).toFixed(0)} KB
+                    </span>
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-danger"
+                      onClick={removeImage}
+                    >
+                      ✕ Remove
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {imageError && <p className="photo-error">⚠️ {imageError}</p>}
+              <p className="photo-hint">Max 5MB • JPG, PNG, WebP supported</p>
+            </div>
+
+            <button type="submit" className="btn btn-primary btn-full" disabled={loading || imageUploading}>
+              {imageUploading
+                ? <><span className="spinner spinner-sm" /> Uploading image…</>
+                : loading
                 ? <><span className="spinner spinner-sm" /> Submitting…</>
                 : '📤 Submit Complaint'}
             </button>

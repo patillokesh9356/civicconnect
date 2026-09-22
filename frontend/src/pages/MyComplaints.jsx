@@ -206,6 +206,22 @@ export default function MyComplaints() {
                   <p>{selected.description}</p>
                 </div>
 
+                {/* Proof Image */}
+                {selected.image_url && (
+                  <div className="detail-section">
+                    <h4>📷 Proof Photo</h4>
+                    <div className="proof-image-box">
+                      <img
+                        src={selected.image_url}
+                        alt="Complaint proof"
+                        className="proof-image"
+                        onClick={() => window.open(selected.image_url, '_blank')}
+                      />
+                      <p className="proof-hint">Click to view full size</p>
+                    </div>
+                  </div>
+                )}
+
                 {selected.ai_summary && (
                   <div className="detail-section ai-box-small">
                     <h4>🤖 AI Summary</h4>
