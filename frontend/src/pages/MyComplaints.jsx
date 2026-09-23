@@ -36,7 +36,7 @@ export default function MyComplaints() {
         setComplaints(res.data.complaints || []);
       } catch (err) {
         if (err.message === 'Network Error') {
-          setError('Backend server चालू नाही. python app.py run करा.');
+          setError('Server is not reachable. Please check your connection.');
         } else {
           setError(
             err.response?.data?.message ||

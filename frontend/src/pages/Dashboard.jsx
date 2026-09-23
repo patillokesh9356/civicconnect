@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import {
   PieChart, Pie, Cell, Tooltip, ResponsiveContainer,
@@ -19,7 +20,8 @@ const STATUS_COLORS = {
 const CATEGORY_COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4'];
 
 export default function Dashboard() {
-  const { user, API } = useAuth();
+  const { user, API, logout } = useAuth();
+  const navigate = useNavigate();
   const [stats, setStats]         = useState(null);
   const [notifications, setNotifs] = useState([]);
   const [loading, setLoading]     = useState(true);
@@ -40,8 +42,15 @@ export default function Dashboard() {
           setNotifs([]);
         }
       } catch (err) {
+        const status = err.response?.status;
+        if (status === 401) {
+          // Token expired — auto logout and redirect
+          logout();
+          navigate('/login', { state: { message: 'Session expired. Please login again.' } });
+          return;
+        }
         const msg = err.response?.data?.message
-          || (err.message === 'Network Error' ? 'Backend server चालू नाही. python app.py run करा.' : null)
+          || (err.message === 'Network Error' ? 'Server is not reachable. Please check your connection.' : null)
           || `Failed to load dashboard (${err.response?.status || err.message})`;
         setError(msg);
       } finally {
@@ -52,15 +61,20 @@ export default function Dashboard() {
   }, [API]);
 
   if (loading) return <LoadingSpinner fullPage text="Loading Dashboard…" />;
-  if (error)   return (
+  if (error) return (
     <div className="page-container">
       <div className="error-card">
         <span className="error-icon">⚠️</span>
-        <h3>Dashboard load होऊ शकला नाही</h3>
+        <h3>Dashboard could not be loaded</h3>
         <p className="error-msg">{error}</p>
-        <button className="btn btn-primary" onClick={() => window.location.reload()}>
-          🔄 Retry
-        </button>
+        <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', justifyContent: 'center' }}>
+          <button className="btn btn-primary" onClick={() => window.location.reload()}>
+            🔄 Retry
+          </button>
+          <button className="btn btn-ghost" onClick={() => { logout(); navigate('/login'); }}>
+            🔑 Login Again
+          </button>
+        </div>
       </div>
     </div>
   );

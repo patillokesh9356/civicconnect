@@ -236,7 +236,7 @@ def login():
     user_role = user.get("role") or "citizen"
     token = jwt.encode(
         {"user_id": user["id"], "role": user_role,
-         "exp": datetime.utcnow() + timedelta(hours=24)},
+         "exp": datetime.utcnow() + timedelta(days=30)},
         app.config["SECRET_KEY"], algorithm="HS256",
     )
     return jsonify({

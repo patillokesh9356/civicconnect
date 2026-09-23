@@ -12,6 +12,7 @@ export default function Login() {
   const [error, setError]     = useState('');
   const [loading, setLoading] = useState(false);
   const [showPass, setShowPass] = useState(false);
+  const [info, setInfo]       = useState(location.state?.message || '');
 
   const handleChange = (e) => {
     setForm(prev => ({ ...prev, [e.target.name]: e.target.value }));
@@ -27,7 +28,6 @@ export default function Login() {
     setLoading(true);
     try {
       const user = await login(form.email, form.password);
-      // Role-based redirect
       if (from) {
         navigate(from, { replace: true });
       } else if (user.role === 'admin') {
@@ -39,7 +39,7 @@ export default function Login() {
       }
     } catch (err) {
       if (err.message === 'Network Error') {
-        setError('Server शी connection होत नाही. Backend (python app.py) चालू आहे का?');
+        setError('Server is not reachable. Please check your connection.');
       } else {
         setError(err.response?.data?.message || `Login failed (${err.response?.status || err.message})`);
       }
@@ -70,6 +70,7 @@ export default function Login() {
             <p>Sign in to continue</p>
           </div>
 
+          {info  && <div className="alert alert-warning">ℹ️ {info}</div>}
           {error && <div className="alert alert-error">⚠️ {error}</div>}
 
           <form onSubmit={handleSubmit} className="auth-form">

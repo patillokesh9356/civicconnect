@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import { uploadComplaintImage } from '../lib/supabase';
+import { sendCollectorEmail } from '../lib/emailService';
 
 const CATEGORIES = ['Road', 'Water', 'Electricity', 'Sanitation', 'Other'];
 
@@ -204,7 +205,27 @@ export default function SubmitComplaint() {
       }
 
       const res = await axios.post(`${API}/complaints`, { ...form, image_url: imageUrl });
-      setSuccess(`✅ Complaint #${res.data.complaint_id} submitted successfully!`);
+
+      // Send email notification to Collector/Authority
+      await sendCollectorEmail({
+        complaintId:   res.data.complaint_id,
+        title:         form.title,
+        description:   form.description,
+        category:      res.data.ai?.category || form.category,
+        priority:      res.data.ai?.priority,
+        location:      form.location,
+        latitude:      form.latitude,
+        longitude:     form.longitude,
+        citizenName:   user?.name,
+        citizenEmail:  user?.email,
+        aiCategory:    res.data.ai?.category,
+        aiPriority:    res.data.ai?.priority,
+        aiSummary:     res.data.ai?.summary,
+        aiSuggestion:  res.data.ai?.suggestion,
+        photoUrl:      imageUrl,
+      });
+
+      setSuccess(`✅ Complaint #${res.data.complaint_id} submitted! Collector notified.`);
       setTimeout(() => navigate('/my-complaints'), 2000);
     } catch (err) {
       setError(err.response?.data?.message || 'Submission failed. Try again.');

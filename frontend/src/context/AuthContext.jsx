@@ -26,6 +26,28 @@ export function AuthProvider({ children }) {
       }
     }
     setLoading(false);
+
+    // Global 401 interceptor — auto logout on token expiry
+    const interceptor = axios.interceptors.response.use(
+      (response) => response,
+      (error) => {
+        if (error.response?.status === 401) {
+          // Token expired or invalid
+          localStorage.removeItem('cc_token');
+          localStorage.removeItem('cc_user');
+          delete axios.defaults.headers.common['Authorization'];
+          setToken(null);
+          setUser(null);
+          // Redirect to login
+          if (window.location.pathname !== '/login' && window.location.pathname !== '/register') {
+            window.location.href = '/login';
+          }
+        }
+        return Promise.reject(error);
+      }
+    );
+
+    return () => axios.interceptors.response.eject(interceptor);
   }, []);
 
   const login = useCallback(async (email, password) => {
