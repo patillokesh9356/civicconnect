@@ -1,9 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
   PieChart, Pie, Cell, ResponsiveContainer, Legend
 } from 'recharts';
+import ComplaintsMap from '../components/ComplaintsMap';
 import { useAuth } from '../context/AuthContext';
 import LoadingSpinner from '../components/LoadingSpinner';
 
@@ -37,6 +39,7 @@ export default function AdminDashboard() {
   const [loading, setLoading]       = useState(true);
   const [tableLoading, setTLoad]    = useState(false);
   const [error, setError]           = useState('');
+  const [activeTab, setActiveTab]   = useState('complaints'); // 'complaints' | 'map'
 
   // Filters
   const [filters, setFilters] = useState({ status: '', category: '', department_id: '', search: '' });
@@ -202,6 +205,30 @@ export default function AdminDashboard() {
         )}
       </div>
 
+      {/* Main Tabs */}
+      <div className="admin-main-tabs">
+        <button
+          className={`admin-tab ${activeTab === 'complaints' ? 'active' : ''}`}
+          onClick={() => setActiveTab('complaints')}
+        >
+          📋 Complaints List
+        </button>
+        <button
+          className={`admin-tab ${activeTab === 'map' ? 'active' : ''}`}
+          onClick={() => setActiveTab('map')}
+        >
+          🗺️ Map View
+        </button>
+      </div>
+
+      {/* MAP TAB */}
+      {activeTab === 'map' && (
+        <ComplaintsMap complaints={complaints} />
+      )}
+
+      {/* COMPLAINTS TAB */}
+      {activeTab === 'complaints' && (<>
+
       {/* Filters */}
       <div className="filter-bar">
         <input
@@ -244,13 +271,15 @@ export default function AdminDashboard() {
                   <th>Department</th>
                   <th>Status</th>
                   <th>Priority</th>
+                  <th>Location</th>
+                  <th>Photo</th>
                   <th>Date</th>
                   <th>Action</th>
                 </tr>
               </thead>
               <tbody>
                 {complaints.length === 0 ? (
-                  <tr><td colSpan={9} className="empty-row">No complaints found.</td></tr>
+                  <tr><td colSpan={11} className="empty-row">No complaints found.</td></tr>
                 ) : complaints.map(c => (
                   <tr key={c.id}>
                     <td>#{c.id}</td>
@@ -260,6 +289,22 @@ export default function AdminDashboard() {
                     <td>{c.department_name || <span className="text-muted">Unassigned</span>}</td>
                     <td><span className={`badge ${BADGE[c.status] || 'badge-gray'}`}>{c.status}</span></td>
                     <td><span className={`badge ${PRIORITY_BADGE[c.priority] || 'badge-gray'}`}>{c.priority}</span></td>
+                    <td>
+                      {c.location
+                        ? <span className="td-location">{c.location}</span>
+                        : c.latitude
+                        ? <a href={`https://www.google.com/maps?q=${c.latitude},${c.longitude}`}
+                             target="_blank" rel="noreferrer"
+                             className="map-link">📍 View Map</a>
+                        : <span className="text-muted">—</span>}
+                    </td>
+                    <td>
+                      {c.image_url
+                        ? <img src={c.image_url} alt="proof"
+                            className="table-thumb"
+                            onClick={() => window.open(c.image_url, '_blank')} />
+                        : <span className="text-muted">—</span>}
+                    </td>
                     <td>{new Date(c.created_at).toLocaleDateString('en-IN')}</td>
                     <td>
                       <button className="btn btn-sm btn-primary" onClick={() => openModal(c.id)}>
@@ -282,6 +327,9 @@ export default function AdminDashboard() {
           </div>
         )}
       </div>
+
+      {/* Close complaints tab wrapper */}
+      </>)}
 
       {/* Manage Modal */}
       {selectedId && selectedCmp && (
