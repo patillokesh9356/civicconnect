@@ -227,7 +227,16 @@ def login():
     user = cursor.fetchone()
     cursor.close(); conn.close()
 
-    if not user or not check_password_hash(user["password"], password):
+    if not user:
+        return jsonify({"message": "Invalid email or password"}), 401
+
+    try:
+        password_match = check_password_hash(user["password"], password)
+    except Exception as e:
+        print("Password check error:", e)
+        return jsonify({"message": f"Login error: {str(e)}"}), 500
+
+    if not password_match:
         return jsonify({"message": "Invalid email or password"}), 401
 
     if user.get("is_active") is not None and not user["is_active"]:
