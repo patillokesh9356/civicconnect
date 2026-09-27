@@ -212,50 +212,60 @@ def register():
 
 @app.route("/login", methods=["POST"])
 def login():
-    data     = request.get_json() or {}
-    email    = (data.get("email")    or "").strip().lower()
-    password = (data.get("password") or "").strip()
-
-    if not email or not password:
-        return jsonify({"message": "Email and password are required"}), 400
-
-    conn, cursor = db()
-    if conn is None:
-        return jsonify({"message": "Database connection failed"}), 500
-
-    cursor.execute("SELECT * FROM users WHERE email = %s", (email,))
-    user = cursor.fetchone()
-    cursor.close(); conn.close()
-
-    if not user:
-        return jsonify({"message": "Invalid email or password"}), 401
-
     try:
-        password_match = check_password_hash(user["password"], password)
+        data     = request.get_json() or {}
+        email    = (data.get("email")    or "").strip().lower()
+        password = (data.get("password") or "").strip()
+
+        if not email or not password:
+            return jsonify({"message": "Email and password are required"}), 400
+
+        conn, cursor = db()
+        if conn is None:
+            return jsonify({"message": "Database connection failed"}), 500
+
+        cursor.execute("SELECT * FROM users WHERE email = %s", (email,))
+        user = cursor.fetchone()
+        cursor.close(); conn.close()
+
+        if not user:
+            return jsonify({"message": "Invalid email or password"}), 401
+
+        # Convert RealDictRow to plain dict
+        user = dict(user)
+
+        try:
+            password_match = check_password_hash(str(user["password"]), password)
+        except Exception as e:
+            print("Password check error:", e)
+            return jsonify({"message": f"Password check error: {str(e)}"}), 500
+
+        if not password_match:
+            return jsonify({"message": "Invalid email or password"}), 401
+
+        if user.get("is_active") is not None and not user["is_active"]:
+            return jsonify({"message": "Account is disabled. Contact admin."}), 403
+
+        user_role = str(user.get("role") or "citizen")
+
+        token = jwt.encode(
+            {"user_id": user["id"], "role": user_role,
+             "exp": datetime.utcnow() + timedelta(days=30)},
+            app.config["SECRET_KEY"], algorithm="HS256",
+        )
+        return jsonify({
+            "message": "Login successful", "token": token,
+            "user": {
+                "id": user["id"], "name": user["name"],
+                "email": user["email"], "role": user_role,
+                "department_id": user.get("department_id"),
+            },
+        }), 200
+
     except Exception as e:
-        print("Password check error:", e)
+        import traceback
+        print("LOGIN ERROR:", traceback.format_exc())
         return jsonify({"message": f"Login error: {str(e)}"}), 500
-
-    if not password_match:
-        return jsonify({"message": "Invalid email or password"}), 401
-
-    if user.get("is_active") is not None and not user["is_active"]:
-        return jsonify({"message": "Account is disabled. Contact admin."}), 403
-
-    user_role = user.get("role") or "citizen"
-    token = jwt.encode(
-        {"user_id": user["id"], "role": user_role,
-         "exp": datetime.utcnow() + timedelta(days=30)},
-        app.config["SECRET_KEY"], algorithm="HS256",
-    )
-    return jsonify({
-        "message": "Login successful", "token": token,
-        "user": {
-            "id": user["id"], "name": user["name"],
-            "email": user["email"], "role": user_role,
-            "department_id": user.get("department_id"),
-        },
-    }), 200
 
 
 @app.route("/profile", methods=["GET"])
