@@ -40,13 +40,10 @@ def get_db_connection():
 
 def get_cursor(conn):
     """Returns dict-like cursor for both MySQL and PostgreSQL."""
-    # Check if PostgreSQL connection
-    try:
-        import psycopg2.extras
-        if hasattr(conn, 'autocommit'):  # psycopg2 connection
-            return conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-    except ImportError:
-        pass
-
+    import psycopg2
+    import psycopg2.extras
+    # psycopg2 connection check
+    if isinstance(conn, psycopg2.extensions.connection):
+        return conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     # MySQL — dictionary cursor
     return conn.cursor(dictionary=True)
